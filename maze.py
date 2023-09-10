@@ -60,6 +60,8 @@ class GridGraphMaze:
         # make length x length grid
         self.length = length
         self.grid = [[0 for _ in range(length)] for _ in range(length)]
+
+        self.next_node = None
         self.q = []
         # self.q = deque()
         # self.q = QAndRandom()
@@ -99,10 +101,13 @@ class GridGraphMaze:
 
     def choose_start_end_coord(self):
         start, end = random.choice([
-            ((0, random.choice(range(self.length))), (self.length - 1, random.choice(range(self.length)))),
-            ((self.length - 1, random.choice(range(self.length))), (0, random.choice(range(self.length)))),
-            ((random.choice(range(self.length)), 0), (random.choice(range(self.length)), self.length - 1)),
-            ((random.choice(range(self.length)), self.length - 1), (random.choice(range(self.length)), 0)),
+            ((0, random.choice(range(int(self.length / 2)))), (self.length - 1, self.length - 1)),
+
+            ((self.length - 1, random.choice(range(int(self.length / 2), self.length))), (0, 0)),
+
+            ((random.choice(range(int(self.length / 2), self.length)), 0), (0, self.length - 1)),
+
+            ((random.choice(range(int(self.length / 2))), self.length - 1), (self.length - 1, 0)),
         ])
         return start, end
 
@@ -130,13 +135,11 @@ class GridGraphMaze:
         return accessible_directions
 
     def set_node_as_parent_of_neighbors(self, node):
-        print('node is start?', node.coordinate, node.is_start)
         # no need to set end node or deadend node as parent of other nodes
         if node.is_end:
             return
         elif not node.is_start and self.is_deadend(node):
             return
-        print('node is start?', node.coordinate, node.is_start)
 
         i, j = node.coordinate
         for neigh in node.neighbors:
@@ -157,8 +160,6 @@ class GridGraphMaze:
         = all adjacent nodes are visited
         """
         acc_dir = self.find_accessible_directions_of_node(node)
-        print('acc_dir: ', acc_dir)
-        print('node.parent: ', node.parent_direction)
         acc_dir.remove(node.parent_direction)  # exclude dir current node came from (parent direction)
 
         n_directions = len(acc_dir)
@@ -225,7 +226,7 @@ class GridGraphMaze:
         """
         # if encounter a node that has only been added as neighbor, and no neighbor added yet
         if len(node.neighbors) == 0:
-            return False
+            return
 
         accessible_directions = self.find_accessible_directions_of_node(node)
 
@@ -241,7 +242,7 @@ class GridGraphMaze:
                     self.grid[i + 1][j].parent_direction = 8
                     self.q.append(self.grid[i + 1][j])
                     self.unvisited_nodes_ls.remove(self.grid[i + 1][j])
-                    return True
+                    return
             elif direction == 4:
                 if not self.grid[i][j - 1].is_visited:
                     node.neighbors.append((4, self.rand_weight()))
@@ -249,7 +250,7 @@ class GridGraphMaze:
                     self.grid[i][j - 1].parent_direction = 6
                     self.q.append(self.grid[i][j - 1])
                     self.unvisited_nodes_ls.remove(self.grid[i][j - 1])
-                    return True
+                    return
             elif direction == 6:
                 if not self.grid[i][j + 1].is_visited:
                     node.neighbors.append((6, self.rand_weight()))
@@ -257,7 +258,7 @@ class GridGraphMaze:
                     self.grid[i][j + 1].parent_direction = 4
                     self.q.append(self.grid[i][j + 1])
                     self.unvisited_nodes_ls.remove(self.grid[i][j + 1])
-                    return True
+                    return
             else:
                 if not self.grid[i - 1][j].is_visited:
                     node.neighbors.append((8, self.rand_weight()))
@@ -265,109 +266,164 @@ class GridGraphMaze:
                     self.grid[i - 1][j].parent_direction = 2
                     self.q.append(self.grid[i - 1][j])
                     self.unvisited_nodes_ls.remove(self.grid[i - 1][j])
-                    return True
-        return False
+                    return
+        return
 
-    def choose_random_number_of_neighbors(self, node):
+    def visit_parent_to_get_direction_towards_wall_from_three_possible_dir(self, node):
         """
-        Checks if accessible nodes(unvisited) are visited or not
-        and adds only accessible nodes to node's neighbors randomly
-        1. end 면 fin 넣어줌
-        2. deadend 면 deadend 넣어줌
+        visit current node's parent node to find direction towards wall/visited node
+
+        부모나 조부모의 노드가 start일 경우를 처리해야한다
         """
-        if node.is_end:
-            node.neighbors = ['fin']
-            return None
-
-        # if node is deadend, don't add any directions (but it needs parent)
-        if not node.is_start and self.is_deadend(node):
-            node.neighbors = ['deadend']
-            return None
-
-        accessible_directions = self.find_accessible_directions_of_node(node)
-
-        # if node is NOT starting node, remove direction toward curr node's parent in accessible_directions!
-        # (shouldn't be able to go back toward parent)
-        if not node.is_start:
-            p_dir = node.parent_direction
-            if p_dir == 2:
-                accessible_directions.remove(2)
-            elif p_dir == 4:
-                accessible_directions.remove(4)
-            elif p_dir == 6:
-                accessible_directions.remove(6)
-            else:
-                accessible_directions.remove(8)
-
-        #  delete visited nodes from directions to avoid sampling them
         i, j = node.coordinate
-        for direction in accessible_directions[:]:
-            if direction == 2:
-                if self.grid[i + 1][j].is_visited:
-                    accessible_directions.remove(2)
-            elif direction == 4:
-                if self.grid[i][j - 1].is_visited:
-                    accessible_directions.remove(4)
-            elif direction == 6:
-                if self.grid[i][j + 1].is_visited:
-                    accessible_directions.remove(6)
-            else:
-                if self.grid[i - 1][j].is_visited:
-                    accessible_directions.remove(8)
-
-        # now choose random number of directions
-        if len(accessible_directions) == 3:
-            n_dir = random.choices([1, 2, 3], weights=[0.79, 0.2, 0.01])[0]
-        elif len(accessible_directions) == 2:
-            n_dir = random.choices([1, 2], weights=[0.95, 0.05])[0]
+        p_dir = node.parent_direction
+        # get parent node
+        if p_dir == 2:
+            parent_node = self.grid[i + 1][j]
+        elif p_dir == 4:
+            parent_node = self.grid[i][j - 1]
+        elif p_dir == 6:
+            parent_node = self.grid[i][j + 1]
         else:
-            n_dir = 1
-
-        if n_dir == 1:
-            sampled_direction = random.sample(accessible_directions, n_dir)[0]
-            # this one direction => return next node right away
-
-            # mark neighbors as visited ahead of time (here) to prevent collision
-            if sampled_direction == 2:
-                if not self.grid[i + 1][j].is_visited:
-                    node.neighbors.append((2, self.rand_weight()))
-                    self.grid[i + 1][j].is_visited = True
-                    self.visited_nodes_ls.append(self.grid[i + 1][j])
-                    self.unvisited_nodes_ls.remove(self.grid[i + 1][j])
-                    self.set_node_as_parent_of_neighbors(node)
-                    self.set_node_as_parent_of_neighbors(node)
-                    return self.grid[i + 1][j]
-            elif sampled_direction == 4:
-                if not self.grid[i][j - 1].is_visited:
-                    node.neighbors.append((4, self.rand_weight()))
-                    self.grid[i][j - 1].is_visited = True
-                    self.visited_nodes_ls.append(self.grid[i][j - 1])
-                    self.unvisited_nodes_ls.remove(self.grid[i][j - 1])
-                    self.set_node_as_parent_of_neighbors(node)
-                    return self.grid[i][j - 1]
-            elif sampled_direction == 6:
-                if not self.grid[i][j + 1].is_visited:
-                    node.neighbors.append((6, self.rand_weight()))
-                    self.grid[i][j + 1].is_visited = True
-                    self.visited_nodes_ls.append(self.grid[i][j + 1])
-                    self.unvisited_nodes_ls.remove(self.grid[i][j + 1])
-                    self.set_node_as_parent_of_neighbors(node)
-                    return self.grid[i][j + 1]
-            else:
-                if not self.grid[i - 1][j].is_visited:
-                    node.neighbors.append((8, self.rand_weight()))
-                    self.grid[i - 1][j].is_visited = True
-                    self.visited_nodes_ls.append(self.grid[i - 1][j])
-                    self.unvisited_nodes_ls.remove(self.grid[i - 1][j])
-                    self.set_node_as_parent_of_neighbors(node)
-                    return self.grid[i - 1][j]
-
+            parent_node = self.grid[i - 1][j]
+        # get parent node's accessible directions
+        parent_accessible_directions = self.find_accessible_directions_of_node(parent_node)
+        if len(parent_accessible_directions) == 0:
+            return self.turn_sideways_given_three_possible_dir(p_dir)
         else:
-            sampled_direction = random.sample(accessible_directions, n_dir)[0]
-            accessible_directions.remove(sampled_direction)
-            # reserved direction(s) => append to list for random selection
-            # sampled direction => return as next node right away
+            # parent node and parent node's parent in straight line & curr node has 3 possible directions
+            if node.parent_direction == parent_node.parent_direction:
+                return self.turn_sideways_given_three_possible_dir(p_dir)
+            # parent node and parent node's parent NOT in straight line & curr node has 3 possible directions
+            else:
+                return parent_node.parent_direction
 
+    @staticmethod
+    def turn_sideways_given_three_possible_dir(p_dir):
+        """
+        부모 neigh 모두 visited 일때 100% turn sideways
+        """
+        if p_dir == 2 or p_dir == 8:
+            return random.sample([4, 6], 1)[0]
+        else:
+            return random.sample([2, 8], 1)[0]
+    @staticmethod
+    def get_opp_dir(dir):
+        if dir == 2:
+            return 8
+        elif dir == 4:
+            return 6
+        elif dir == 6:
+            return 4
+        else:
+            return 2
+
+    @staticmethod
+    def choose_biased_direction(node, p_dir, accessible_directions):
+        """
+        Want to make maze less branchy.
+        Choose next neighbor node in a biased manner so that
+        next decision is the inclined to be the same as parent's direction.
+        :param p_dir: direction to parent (int)
+        :param accessible_directions: list of accessible directions ([int]
+        :return: direction to neighbor
+        """
+        if len(accessible_directions) == 2:
+            if p_dir == 2 and 8 in accessible_directions:
+                accessible_directions = [x for x in accessible_directions if x != 8] + [8]
+                sampled_direction = random.choices(accessible_directions, weights=[0.1, 0.9])[0]
+                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
+                if n_dir == 1:
+                    accessible_directions = [sampled_direction]
+            elif p_dir == 4 and 6 in accessible_directions:
+                accessible_directions = [x for x in accessible_directions if x != 6] + [6]
+                sampled_direction = random.choices(accessible_directions, weights=[0.35, 0.65])[0]
+                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
+                if n_dir == 1:
+                    accessible_directions = [sampled_direction]
+            elif p_dir == 6 and 4 in accessible_directions:
+                accessible_directions = [x for x in accessible_directions if x != 4] + [4]
+
+                sampled_direction = random.choices(accessible_directions, weights=[0.35, 0.65])[0]
+                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
+                if n_dir == 1:
+                    accessible_directions = [sampled_direction]
+            elif p_dir == 8 and 2 in accessible_directions:
+                accessible_directions = [x for x in accessible_directions if x != 2] + [2]
+                sampled_direction = random.choices(accessible_directions, weights=[0.35, 0.65])[0]
+                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
+                if n_dir == 1:
+                    accessible_directions = [sampled_direction]
+            else:
+                sampled_direction = random.sample(accessible_directions, 1)[0]
+
+        elif len(accessible_directions) == 3:
+            sampled_direction = visit_parent_to_get_direction_towards_wall_from_three_possible_dir(node)
+            n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
+            if n_dir == 1:
+                accessible_directions = [sampled_direction]
+            else:
+                accessible_directions.remove(sampled_direction)
+                del accessible_directions[random.choices([0, 1])[0]]
+                accessible_directions.append(sampled_direction)
+
+            #################
+            if p_dir == 2 and 8 in accessible_directions:
+                accessible_directions = [x for x in accessible_directions if x != 8] + [8]  # move 8 to end of list
+                sampled_direction = turn_sideways_given_three_possible_dir(p_dir)
+
+                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
+                if n_dir == 1:
+                    accessible_directions = [sampled_direction]
+                else:
+                    accessible_directions.remove(sampled_direction)
+                    del accessible_directions[random.choices([0, 1])[0]]
+                    accessible_directions.append(sampled_direction)
+
+            elif p_dir == 4 and 6 in accessible_directions:
+                accessible_directions = [x for x in accessible_directions if x != 6] + [6]
+                sampled_direction = turn_sideways_given_three_possible_dir(p_dir)
+
+                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
+                if n_dir == 1:
+                    accessible_directions = [sampled_direction]
+                else:
+                    accessible_directions.remove(sampled_direction)
+                    del accessible_directions[random.choices([0, 1])[0]]
+                    accessible_directions.append(sampled_direction)
+
+            elif p_dir == 6 and 4 in accessible_directions:
+                accessible_directions = [x for x in accessible_directions if x != 4] + [4]
+                sampled_direction = turn_sideways_given_three_possible_dir(p_dir)
+
+                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
+                if n_dir == 1:
+                    accessible_directions = [sampled_direction]
+                else:
+                    accessible_directions.remove(sampled_direction)
+                    del accessible_directions[random.choices([0, 1])[0]]
+                    accessible_directions.append(sampled_direction)
+
+            elif p_dir == 8 and 2 in accessible_directions:
+                accessible_directions = [x for x in accessible_directions if x != 2] + [2]
+                sampled_direction = turn_sideways_given_three_possible_dir(p_dir)
+
+                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
+                if n_dir == 1:
+                    accessible_directions = [sampled_direction]
+                else:
+                    accessible_directions.remove(sampled_direction)
+                    del accessible_directions[random.choices([0, 1])[0]]
+                    accessible_directions.append(sampled_direction)
+
+            else:
+                sampled_direction = random.sample(accessible_directions, 1)[0]
+
+        return sampled_direction, accessible_directions
+
+    def mark_neighbor_visited(self, sampled_direction, reserve_node=False, accessible_directions=None):
+        # if reserve node to be processed later, add to self.q
+        if reserve_node:
             for reserved_direction in accessible_directions:
                 if reserved_direction == 2:
                     if not self.grid[i + 1][j].is_visited:
@@ -397,85 +453,158 @@ class GridGraphMaze:
                         self.visited_nodes_ls.append(self.grid[i - 1][j])
                         self.unvisited_nodes_ls.remove(self.grid[i - 1][j])
                         self.q.append(self.grid[i - 1][j])
-
-            # mark neighbors as visited ahead of time (here) to prevent collision
+        # if choose to process next node (sampled_direction) right away, put next node in self.next_node
+        else:
             if sampled_direction == 2:
                 if not self.grid[i + 1][j].is_visited:
                     node.neighbors.append((2, self.rand_weight()))
                     self.grid[i + 1][j].is_visited = True
                     self.visited_nodes_ls.append(self.grid[i + 1][j])
                     self.unvisited_nodes_ls.remove(self.grid[i + 1][j])
-                    self.set_node_as_parent_of_neighbors(node)
-                    return self.grid[i + 1][j]
+                    self.next_node = self.grid[i + 1][j]
             elif sampled_direction == 4:
                 if not self.grid[i][j - 1].is_visited:
                     node.neighbors.append((4, self.rand_weight()))
                     self.grid[i][j - 1].is_visited = True
                     self.visited_nodes_ls.append(self.grid[i][j - 1])
                     self.unvisited_nodes_ls.remove(self.grid[i][j - 1])
-                    self.set_node_as_parent_of_neighbors(node)
-                    return self.grid[i][j - 1]
+                    self.next_node = self.grid[i][j - 1]
             elif sampled_direction == 6:
                 if not self.grid[i][j + 1].is_visited:
                     node.neighbors.append((6, self.rand_weight()))
                     self.grid[i][j + 1].is_visited = True
                     self.visited_nodes_ls.append(self.grid[i][j + 1])
                     self.unvisited_nodes_ls.remove(self.grid[i][j + 1])
-                    self.set_node_as_parent_of_neighbors(node)
-                    return self.grid[i][j + 1]
+                    self.next_node = self.grid[i][j + 1]
             else:
                 if not self.grid[i - 1][j].is_visited:
                     node.neighbors.append((8, self.rand_weight()))
                     self.grid[i - 1][j].is_visited = True
                     self.visited_nodes_ls.append(self.grid[i - 1][j])
                     self.unvisited_nodes_ls.remove(self.grid[i - 1][j])
-                    self.set_node_as_parent_of_neighbors(node)
-                    return self.grid[i - 1][j]
+                    self.next_node = self.grid[i - 1][j]
 
-    def make_maze(self, start_node):
-        node = start_node
-        self.q.append(node)
-        node.is_visited = True
-        self.visited_nodes_ls.append(node)
-        self.unvisited_nodes_ls.remove(node)
+    def choose_random_number_of_neighbors(self, node):
+        """
+        Checks if accessible nodes(unvisited) are visited or not
+        and adds only accessible nodes to node's neighbors randomly
+        1. end 면 fin 넣어줌
+        2. deadend 면 deadend 넣어줌
+        """
+        if node.is_end:
+            node.neighbors = ['fin']
+            self.next_node = node
+            return
+
+        # if node is deadend, don't add any directions (but it needs parent)
+        if not node.is_start and self.is_deadend(node):
+            node.neighbors = ['deadend']
+            self.next_node = node
+            return
+
+        accessible_directions = self.find_accessible_directions_of_node(node)
+
+        # if node is NOT starting node, remove direction toward curr node's parent in accessible_directions!
+        # (shouldn't be able to go back toward parent)
+        p_dir = node.parent_direction
+        if not node.is_start:
+            if p_dir == 2:
+                accessible_directions.remove(2)
+            elif p_dir == 4:
+                accessible_directions.remove(4)
+            elif p_dir == 6:
+                accessible_directions.remove(6)
+            else:
+                accessible_directions.remove(8)
+
+        #  delete visited nodes from directions to avoid sampling them
+        i, j = node.coordinate
+        for direction in accessible_directions[:]:
+            if direction == 2:
+                if self.grid[i + 1][j].is_visited:
+                    accessible_directions.remove(2)
+            elif direction == 4:
+                if self.grid[i][j - 1].is_visited:
+                    accessible_directions.remove(4)
+            elif direction == 6:
+                if self.grid[i][j + 1].is_visited:
+                    accessible_directions.remove(6)
+            else:
+                if self.grid[i - 1][j].is_visited:
+                    accessible_directions.remove(8)
+
+        if len(accessible_directions) == 1:
+            # this one direction => return next node right away
+            sampled_direction = accessible_directions[0]
+            # mark neighbors as visited ahead of time (here) to prevent collision
+            self.mark_neighbor_visited(sampled_direction)
+        else:
+            if node.is_start:
+                sampled_direction = random.sample(accessible_directions, 1)[0]
+            else:
+                sampled_direction, accessible_directions = self.choose_biased_direction(node, p_dir, accessible_directions)
+            print('node.coordinate', node.coordinate)
+
+            accessible_directions.remove(sampled_direction)
+            # reserved direction(s) => append to self.q for random selection
+            self.mark_neighbor_visited(sampled_direction, True, accessible_directions)
+
+            # mark neighbors as visited ahead of time (here) to prevent collision
+            self.mark_neighbor_visited(sampled_direction)
+
+    def go_to_visited_nodes_to_find_new_path(self):
+        # if meet deadend/fin but there's still unvisited nodes in grid,
+        # choose a new node from visited nodes to find node with unchosen accessible neighbor
+        random.shuffle(self.visited_nodes_ls)
+        for visited_node in self.visited_nodes_ls[:]:
+            # remove node if end node or if there are no unvisited neighbors (= fully explored node)
+            if self.find_out_if_node_has_zero_unvisited_neighbors(visited_node) or visited_node.is_end:
+                self.visited_nodes_ls.remove(visited_node)
+            else:
+                self.find_unvisited_nodes_from_visited_and_add_to_q(visited_node)
+
+    def make_maze(self, start_node, path_length):
+        self.next_node = start_node
+        start_node.is_visited = True
+        self.visited_nodes_ls.append(start_node)
+        self.unvisited_nodes_ls.remove(start_node)
 
         path_counter = 1
-        while len(self.q) > 0:
-            print('node coord: ', node.coordinate, node.is_start)
+        while True:
             # making paths
-            if path_counter > 7:
-                node = random.sample(self.q, 1)[0]
-                self.q.remove(node)  # need to sample deadend & end in order to label them in node's neighbors
-                node = self.choose_random_number_of_neighbors(node)
-                if node is None:
-                    path_counter = 100
-                    continue
-                path_counter += 1
-            else:
-                if node.is_start:
-                    self.q.remove(node)
+            if path_counter < path_length:
+                node = self.next_node
+                # if meet deadend/fin but there's still unvisited nodes in grid,
+                # choose a new node from visited nodes to find node with unchosen accessible neighbor
                 # choose random number of unvisited neighbors
-                node = self.choose_random_number_of_neighbors(node)
+                self.choose_random_number_of_neighbors(node)
+                self.set_node_as_parent_of_neighbors(node)
+                # print('1.')
+                # print('node.coordinate: ',node.coordinate, node.neighbors)
                 path_counter += 1
-                if node is None:
+                if path_counter == path_length:
+                    self.q.append(self.next_node)
+                if node.neighbors[0] == 'fin' or node.neighbors[0] == 'deadend':
+                    self.go_to_visited_nodes_to_find_new_path()  # add nodes to self.q
                     path_counter = 100
                     continue
+            else:
+                path_counter = 0
+                if len(self.q) == 0 and len(self.unvisited_nodes_ls) != 0:
+                    self.go_to_visited_nodes_to_find_new_path()  # add nodes to self.q
 
-            # if meet end node but there's still unvisited nodes in grid,
-            # choose a new node from visited nodes to find node with unchosen accessible neighbor
-            if node.neighbors[0] == 'fin' or node.neighbors[0] == 'deadend':
-                if len(self.unvisited_nodes_ls) != 0:
-                    random.shuffle(self.visited_nodes_ls)
-                    for visited_node in self.visited_nodes_ls[:]:
-                        # remove node if there are no unvisited neighbors (= fully explored node)
-                        if self.find_out_if_node_has_zero_unvisited_neighbors(visited_node):
-                            self.visited_nodes_ls.remove(visited_node)
-                        else:
-                            # skip searching end node from visited_nodes_ls
-                            # (don't want to search new route from end node)
-                            if visited_node.is_end:
-                                continue
-                            self.find_unvisited_nodes_from_visited_and_add_to_q(visited_node)
+                node = random.sample(self.q, 1)[0]
+                self.q.remove(node)
+
+                # choose random number of unvisited neighbors
+                self.choose_random_number_of_neighbors(node)
+                self.set_node_as_parent_of_neighbors(node)
+                # print('2.')
+                # print('node.coordinate: ',node.coordinate, node.neighbors)
+                path_counter += 1
+
+            if len(self.q) == 0 and len(self.unvisited_nodes_ls) == 0:
+                break
 
     def draw_maze(self, background_c_val, wall_c_val, start_c_val, end_c_val):
         self.wall_color_val = wall_c_val
@@ -860,3 +989,58 @@ class GridGraphMaze:
                 for y_val in range(y_start, y_end):
                     if x_val == x_start and y_val != y_start and y_val != y_end - 1:
                         self.drawing_board[x_val - 1][y_val] = self.background_color_val
+
+
+if __name__ == "__main__":
+    # random.seed(8)
+    grid_length = 30
+    grid_graph = GridGraphMaze(length=grid_length)
+
+    # check direction/number of neighbors
+    print('start:', grid_graph.start_coord)
+    print('end:', grid_graph.end_coord)
+    print()
+
+    st_i, st_j = grid_graph.start_coord
+    st_node = grid_graph.grid[st_i][st_j]
+
+    grid_graph.make_maze(st_node, path_length=20)
+
+    # 100 by 100 grid => 0.5 second
+    # 300 by 300 grid => 44 seconds
+
+    print('=============== neighbors ===============')
+    for i in grid_graph.grid:
+        for j in i:
+            print(''.join([str(x[0]) for x in j.neighbors]), end='\t')
+        print()
+    print()
+
+    # print('===============parent direction===============')
+    # print()
+    # for i in grid_graph.grid:
+    #     for j in i:
+    #         print(j.parent_direction, end='\t')
+    #     print()
+    # print()
+
+    # print('===============is visited===============')
+    # print()
+    # for i in grid_graph.grid:
+    #     for j in i:
+    #         print(j.is_visited, end=' ')
+    #     print()
+    # print()
+    print('=========================================')
+
+    grid_graph.draw_maze(background_c_val=0.7, wall_c_val=1, start_c_val=0.3, end_c_val=0.5)
+    # Create a sample 2D array of values
+    data = grid_graph.drawing_board
+
+    # Create a heatmap plot
+    plt.imshow(data, cmap='Dark2_r', vmin=0, vmax=1)
+    plt.colorbar()  # Add a color bar to the plot
+    plt.axis('off')
+
+    # Display the plot
+    plt.show()
