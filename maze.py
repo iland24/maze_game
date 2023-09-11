@@ -272,8 +272,6 @@ class GridGraphMaze:
     def visit_parent_to_get_direction_towards_wall_from_three_possible_dir(self, node):
         """
         visit current node's parent node to find direction towards wall/visited node
-
-        부모나 조부모의 노드가 start일 경우를 처리해야한다
         """
         i, j = node.coordinate
         p_dir = node.parent_direction
@@ -288,15 +286,35 @@ class GridGraphMaze:
             parent_node = self.grid[i - 1][j]
         # get parent node's accessible directions
         parent_accessible_directions = self.find_accessible_directions_of_node(parent_node)
-        if len(parent_accessible_directions) == 0:
+        if len(parent_accessible_directions) == 0:  # all neigh of parent visited
             return self.turn_sideways_given_three_possible_dir(p_dir)
         else:
-            # parent node and parent node's parent in straight line & curr node has 3 possible directions
+            if parent_node.is_start:
+                if len(parent_accessible_directions) == 1:
+                    return get_opposite_direction(parent_accessible_directions[0])
+                else:
+                    return self.turn_sideways_given_three_possible_dir(p_dir)
+            # parent node and parent node's parent are in straight line & curr node has 3 possible directions
             if node.parent_direction == parent_node.parent_direction:
-                return self.turn_sideways_given_three_possible_dir(p_dir)
+                # parent 가 accessible 안되는 쪽으로
+                if len(parent_accessible_directions) == 1:
+                    return get_opposite_direction(parent_accessible_directions[0])
+                else:
+                    return self.turn_sideways_given_three_possible_dir(p_dir)
             # parent node and parent node's parent NOT in straight line & curr node has 3 possible directions
             else:
                 return parent_node.parent_direction
+
+    @staticmethod
+    def get_opposite_direction(direction):
+        if direction == 2:
+            return 8
+        elif direction == 4:
+            return 6
+        elif direction == 6:
+            return 4
+        else:
+            return 2
 
     @staticmethod
     def turn_sideways_given_three_possible_dir(p_dir):
@@ -307,23 +325,13 @@ class GridGraphMaze:
             return random.sample([4, 6], 1)[0]
         else:
             return random.sample([2, 8], 1)[0]
-    @staticmethod
-    def get_opp_dir(dir):
-        if dir == 2:
-            return 8
-        elif dir == 4:
-            return 6
-        elif dir == 6:
-            return 4
-        else:
-            return 2
 
-    @staticmethod
-    def choose_biased_direction(node, p_dir, accessible_directions):
+    def choose_biased_direction(self, node, p_dir, accessible_directions):
         """
         Want to make maze less branchy.
         Choose next neighbor node in a biased manner so that
         next decision is the inclined to be the same as parent's direction.
+        :param node: curr node
         :param p_dir: direction to parent (int)
         :param accessible_directions: list of accessible directions ([int]
         :return: direction to neighbor
@@ -358,7 +366,7 @@ class GridGraphMaze:
                 sampled_direction = random.sample(accessible_directions, 1)[0]
 
         elif len(accessible_directions) == 3:
-            sampled_direction = visit_parent_to_get_direction_towards_wall_from_three_possible_dir(node)
+            sampled_direction = self.visit_parent_to_get_direction_towards_wall_from_three_possible_dir(node)
             n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
             if n_dir == 1:
                 accessible_directions = [sampled_direction]
@@ -367,61 +375,10 @@ class GridGraphMaze:
                 del accessible_directions[random.choices([0, 1])[0]]
                 accessible_directions.append(sampled_direction)
 
-            #################
-            if p_dir == 2 and 8 in accessible_directions:
-                accessible_directions = [x for x in accessible_directions if x != 8] + [8]  # move 8 to end of list
-                sampled_direction = turn_sideways_given_three_possible_dir(p_dir)
-
-                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
-                if n_dir == 1:
-                    accessible_directions = [sampled_direction]
-                else:
-                    accessible_directions.remove(sampled_direction)
-                    del accessible_directions[random.choices([0, 1])[0]]
-                    accessible_directions.append(sampled_direction)
-
-            elif p_dir == 4 and 6 in accessible_directions:
-                accessible_directions = [x for x in accessible_directions if x != 6] + [6]
-                sampled_direction = turn_sideways_given_three_possible_dir(p_dir)
-
-                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
-                if n_dir == 1:
-                    accessible_directions = [sampled_direction]
-                else:
-                    accessible_directions.remove(sampled_direction)
-                    del accessible_directions[random.choices([0, 1])[0]]
-                    accessible_directions.append(sampled_direction)
-
-            elif p_dir == 6 and 4 in accessible_directions:
-                accessible_directions = [x for x in accessible_directions if x != 4] + [4]
-                sampled_direction = turn_sideways_given_three_possible_dir(p_dir)
-
-                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
-                if n_dir == 1:
-                    accessible_directions = [sampled_direction]
-                else:
-                    accessible_directions.remove(sampled_direction)
-                    del accessible_directions[random.choices([0, 1])[0]]
-                    accessible_directions.append(sampled_direction)
-
-            elif p_dir == 8 and 2 in accessible_directions:
-                accessible_directions = [x for x in accessible_directions if x != 2] + [2]
-                sampled_direction = turn_sideways_given_three_possible_dir(p_dir)
-
-                n_dir = random.choices([1, 2], weights=[0.9, 0.1])[0]
-                if n_dir == 1:
-                    accessible_directions = [sampled_direction]
-                else:
-                    accessible_directions.remove(sampled_direction)
-                    del accessible_directions[random.choices([0, 1])[0]]
-                    accessible_directions.append(sampled_direction)
-
-            else:
-                sampled_direction = random.sample(accessible_directions, 1)[0]
-
         return sampled_direction, accessible_directions
 
-    def mark_neighbor_visited(self, sampled_direction, reserve_node=False, accessible_directions=None):
+    def mark_neighbors_visited(self, node, sampled_direction, reserve_node=False, accessible_directions=None):
+        i, j = node.coordinate
         # if reserve node to be processed later, add to self.q
         if reserve_node:
             for reserved_direction in accessible_directions:
@@ -537,20 +494,20 @@ class GridGraphMaze:
             # this one direction => return next node right away
             sampled_direction = accessible_directions[0]
             # mark neighbors as visited ahead of time (here) to prevent collision
-            self.mark_neighbor_visited(sampled_direction)
+            self.mark_neighbors_visited(node, sampled_direction)
         else:
             if node.is_start:
                 sampled_direction = random.sample(accessible_directions, 1)[0]
             else:
-                sampled_direction, accessible_directions = self.choose_biased_direction(node, p_dir, accessible_directions)
-            print('node.coordinate', node.coordinate)
+                sampled_direction, accessible_directions = (
+                    self.choose_biased_direction(node, p_dir, accessible_directions))
 
             accessible_directions.remove(sampled_direction)
             # reserved direction(s) => append to self.q for random selection
-            self.mark_neighbor_visited(sampled_direction, True, accessible_directions)
+            self.mark_neighbors_visited(node, sampled_direction, True, accessible_directions)
 
             # mark neighbors as visited ahead of time (here) to prevent collision
-            self.mark_neighbor_visited(sampled_direction)
+            self.mark_neighbors_visited(node, sampled_direction)
 
     def go_to_visited_nodes_to_find_new_path(self):
         # if meet deadend/fin but there's still unvisited nodes in grid,
@@ -1004,7 +961,7 @@ if __name__ == "__main__":
     st_i, st_j = grid_graph.start_coord
     st_node = grid_graph.grid[st_i][st_j]
 
-    grid_graph.make_maze(st_node, path_length=20)
+    grid_graph.make_maze(st_node, path_length=50)
 
     # 100 by 100 grid => 0.5 second
     # 300 by 300 grid => 44 seconds
@@ -1033,14 +990,15 @@ if __name__ == "__main__":
     # print()
     print('=========================================')
 
-    grid_graph.draw_maze(background_c_val=0.7, wall_c_val=1, start_c_val=0.3, end_c_val=0.5)
+    grid_graph.draw_maze(background_c_val=0, wall_c_val=1, start_c_val=1, end_c_val=1)
     # Create a sample 2D array of values
     data = grid_graph.drawing_board
 
     # Create a heatmap plot
-    plt.imshow(data, cmap='Dark2_r', vmin=0, vmax=1)
-    plt.colorbar()  # Add a color bar to the plot
+    plt.imshow(data, cmap='summer', vmin=0, vmax=1)
+    # Blues, Purples, Greens, cividis, summer
+    # plt.colorbar()  # Add a color bar to the plot
     plt.axis('off')
-
     # Display the plot
     plt.show()
+    # plt.savefig('summer_maze.png')
