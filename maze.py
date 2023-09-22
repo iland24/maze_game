@@ -16,7 +16,7 @@ class Node:
         If node is end node,
         self.is_end=True, else self.is_end=None
 
-        neighbors: list of neighbors / directions node can access
+        neighbors: list of neighbors / directions node can access.
         Each element is a tuple of direction and random weight that ranges [0:9]
         """
         self.coordinate = coordinate
@@ -33,14 +33,14 @@ class Node:
 
     def mark_as_start_node(self):
         """
-        marks is_start True if
+        Marks is_start True if
         the node is start node
         """
         self.is_start = True
 
     def mark_as_end_node(self):
         """
-        marks is_end True if
+        Marks is_end True if
         the node is start node
         """
         self.is_end = True
@@ -50,21 +50,26 @@ class Node:
 class GridGraphMaze:
     def __init__(self, length):
         """
-        Makes grid and insert Node obj in grid
-        Marks start and end nodes
+        Makes grid and insert Node instances in grid (nested list).
+        Marks start and end nodes.
         Directions/neighbors are represented using four numbers:
           8
         4   6
           2
+        Instance variables necessary for making maze and drawing maze
+        are all initialized here.
+        Start and end nodes are initialized as well.
+
+        param length of one side of the square grid
         """
         # make length x length grid
         self.length = length
         self.grid = [[0 for _ in range(length)] for _ in range(length)]
 
         self.next_node = None
-        self.q = []
-        # self.q = deque()
-        # self.q = QAndRandom()
+        self.reserved_nodes_ls = []
+        # self.reserved_nodes_ls = deque()
+        # self.reserved_nodes_ls = QAndRandom()
 
         # list of visited / unvisited nodes
         self.visited_nodes_ls = []
@@ -100,6 +105,10 @@ class GridGraphMaze:
         return random.choices([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])[0]
 
     def choose_start_end_coord(self):
+        """
+        Start and end nodes are put diagonally far apart.
+        :return: start and end coordinates as tuples ((1x2 tuple),(1x2 tuple))
+        """
         start, end = random.choice([
             ((0, random.choice(range(int(self.length / 2)))), (self.length - 1, self.length - 1)),
 
@@ -112,6 +121,11 @@ class GridGraphMaze:
         return start, end
 
     def find_accessible_directions_of_node(self, node):
+        """
+        Finds directions current node can go based only on
+        position of the node in the grid graph.
+        :return: list of directions node can go
+        """
         i, j = node.coordinate
         # adjacent node directions
         if i == 0 and j == 0:
@@ -156,8 +170,8 @@ class GridGraphMaze:
 
     def is_deadend(self, node):
         """
-        checks if node is a deadend:
-        = all adjacent nodes are visited
+        Checks if node is a deadend.
+        => all adjacent nodes are visited
         """
         acc_dir = self.find_accessible_directions_of_node(node)
         acc_dir.remove(node.parent_direction)  # exclude dir current node came from (parent direction)
@@ -218,11 +232,11 @@ class GridGraphMaze:
 
     def find_unvisited_nodes_from_visited_and_add_to_q(self, node):
         """
-        given a node, finds unvisited (previously unselected) neighbor node,
+        Given a node, finds unvisited (previously unselected) neighbor node,
         add direction & weight of newly added unvisited node in node,
         add parent_direction to newly added unvisited node
 
-        returns True if node with unvisited direction is added to q else False
+        return True if node with unvisited direction is added to reserved_nodes_ls else False
         """
         # if encounter a node that has only been added as neighbor, and no neighbor added yet
         if len(node.neighbors) == 0:
@@ -240,7 +254,7 @@ class GridGraphMaze:
                     node.neighbors.append((2, self.rand_weight()))
                     self.grid[i + 1][j].is_visited = True
                     self.grid[i + 1][j].parent_direction = 8
-                    self.q.append(self.grid[i + 1][j])
+                    self.reserved_nodes_ls.append(self.grid[i + 1][j])
                     self.unvisited_nodes_ls.remove(self.grid[i + 1][j])
                     return
             elif direction == 4:
@@ -248,7 +262,7 @@ class GridGraphMaze:
                     node.neighbors.append((4, self.rand_weight()))
                     self.grid[i][j - 1].is_visited = True
                     self.grid[i][j - 1].parent_direction = 6
-                    self.q.append(self.grid[i][j - 1])
+                    self.reserved_nodes_ls.append(self.grid[i][j - 1])
                     self.unvisited_nodes_ls.remove(self.grid[i][j - 1])
                     return
             elif direction == 6:
@@ -256,7 +270,7 @@ class GridGraphMaze:
                     node.neighbors.append((6, self.rand_weight()))
                     self.grid[i][j + 1].is_visited = True
                     self.grid[i][j + 1].parent_direction = 4
-                    self.q.append(self.grid[i][j + 1])
+                    self.reserved_nodes_ls.append(self.grid[i][j + 1])
                     self.unvisited_nodes_ls.remove(self.grid[i][j + 1])
                     return
             else:
@@ -264,7 +278,7 @@ class GridGraphMaze:
                     node.neighbors.append((8, self.rand_weight()))
                     self.grid[i - 1][j].is_visited = True
                     self.grid[i - 1][j].parent_direction = 2
-                    self.q.append(self.grid[i - 1][j])
+                    self.reserved_nodes_ls.append(self.grid[i - 1][j])
                     self.unvisited_nodes_ls.remove(self.grid[i - 1][j])
                     return
         return
@@ -307,6 +321,10 @@ class GridGraphMaze:
 
     @staticmethod
     def get_opposite_direction(direction):
+        """
+        :param direction: one of four directions (2,4,6,8)
+        :return: opposite direction of given direction
+        """
         if direction == 2:
             return 8
         elif direction == 4:
@@ -319,18 +337,18 @@ class GridGraphMaze:
     @staticmethod
     def turn_sideways_given_three_possible_dir(p_dir):
         """
-        부모 neigh 모두 visited 일때 100% turn sideways
+        return right or left direction based on parent's direction
         """
         if p_dir == 2 or p_dir == 8:
             return random.sample([4, 6], 1)[0]
         else:
             return random.sample([2, 8], 1)[0]
 
-    def choose_biased_direction(self, node, p_dir, accessible_directions):
+    def choose_direction_with_bias(self, node, p_dir, accessible_directions):
         """
-        Want to make maze less branchy.
         Choose next neighbor node in a biased manner so that
         next decision is the inclined to be the same as parent's direction.
+        * Makes maze less branchy.
         :param node: curr node
         :param p_dir: direction to parent (int)
         :param accessible_directions: list of accessible directions ([int]
@@ -378,8 +396,13 @@ class GridGraphMaze:
         return sampled_direction, accessible_directions
 
     def mark_neighbors_visited(self, node, sampled_direction, reserve_node=False, accessible_directions=None):
+        """
+        Marks neighbors of node visited,
+        even the ones stored/reserved for random selection in the future
+        once path_length is reached.
+        """
         i, j = node.coordinate
-        # if reserve node to be processed later, add to self.q
+        # if reserve node to be processed later, add to self.reserved_nodes_ls without putting it into the next_node
         if reserve_node:
             for reserved_direction in accessible_directions:
                 if reserved_direction == 2:
@@ -388,28 +411,28 @@ class GridGraphMaze:
                         self.grid[i + 1][j].is_visited = True
                         self.visited_nodes_ls.append(self.grid[i + 1][j])
                         self.unvisited_nodes_ls.remove(self.grid[i + 1][j])
-                        self.q.append(self.grid[i + 1][j])
+                        self.reserved_nodes_ls.append(self.grid[i + 1][j])
                 elif reserved_direction == 4:
                     if not self.grid[i][j - 1].is_visited:
                         node.neighbors.append((4, self.rand_weight()))
                         self.grid[i][j - 1].is_visited = True
                         self.visited_nodes_ls.append(self.grid[i][j - 1])
                         self.unvisited_nodes_ls.remove(self.grid[i][j - 1])
-                        self.q.append(self.grid[i][j - 1])
+                        self.reserved_nodes_ls.append(self.grid[i][j - 1])
                 elif reserved_direction == 6:
                     if not self.grid[i][j + 1].is_visited:
                         node.neighbors.append((6, self.rand_weight()))
                         self.grid[i][j + 1].is_visited = True
                         self.visited_nodes_ls.append(self.grid[i][j + 1])
                         self.unvisited_nodes_ls.remove(self.grid[i][j + 1])
-                        self.q.append(self.grid[i][j + 1])
+                        self.reserved_nodes_ls.append(self.grid[i][j + 1])
                 else:
                     if not self.grid[i - 1][j].is_visited:
                         node.neighbors.append((8, self.rand_weight()))
                         self.grid[i - 1][j].is_visited = True
                         self.visited_nodes_ls.append(self.grid[i - 1][j])
                         self.unvisited_nodes_ls.remove(self.grid[i - 1][j])
-                        self.q.append(self.grid[i - 1][j])
+                        self.reserved_nodes_ls.append(self.grid[i - 1][j])
         # if choose to process next node (sampled_direction) right away, put next node in self.next_node
         else:
             if sampled_direction == 2:
@@ -443,10 +466,14 @@ class GridGraphMaze:
 
     def choose_random_number_of_neighbors(self, node):
         """
-        Checks if accessible nodes(unvisited) are visited or not
-        and adds only accessible nodes to node's neighbors randomly
-        1. end 면 fin 넣어줌
-        2. deadend 면 deadend 넣어줌
+        Marks dead end and end node in node.neighbors.
+        Finds accessible (unvisited) neighbor nodes and chooses/adds
+        directions towards them with bias and adds selected directions to
+        node.neighbors.
+
+        Bias1: next direction is biased to be tangent to wall or visited node
+        to make the maze tightly packed with continuous paths.
+        Bias2: next direction is biased to follow parent node's direction.
         """
         if node.is_end:
             node.neighbors = ['fin']
@@ -500,10 +527,10 @@ class GridGraphMaze:
                 sampled_direction = random.sample(accessible_directions, 1)[0]
             else:
                 sampled_direction, accessible_directions = (
-                    self.choose_biased_direction(node, p_dir, accessible_directions))
+                    self.choose_direction_with_bias(node, p_dir, accessible_directions))
 
             accessible_directions.remove(sampled_direction)
-            # reserved direction(s) => append to self.q for random selection
+            # reserved direction(s) => append to self.reserved_nodes_ls for random selection
             self.mark_neighbors_visited(node, sampled_direction, True, accessible_directions)
 
             # mark neighbors as visited ahead of time (here) to prevent collision
@@ -521,6 +548,19 @@ class GridGraphMaze:
                 self.find_unvisited_nodes_from_visited_and_add_to_q(visited_node)
 
     def make_maze(self, start_node, path_length):
+        """
+        Makes maze by searching and adding neighboring node every step starting from start node.
+        If deadend/end node is encountered and grid is not fully explored, this function finds
+        new directions from visited nodes that have not been explored.
+
+        :param start_node: making maze start from this start node
+        :param path_length: path length value should be determined based on the size of the maze.
+        Bigger path_length leads to longer trails of path without meeting a dead end. Once max path_length
+        is reached, next node is randomly selected from neighbors of nodes encountered while path was being
+        made.
+
+        * path_counter range = [3, +inf]
+        """
         self.next_node = start_node
         start_node.is_visited = True
         self.visited_nodes_ls.append(start_node)
@@ -536,34 +576,37 @@ class GridGraphMaze:
                 # choose random number of unvisited neighbors
                 self.choose_random_number_of_neighbors(node)
                 self.set_node_as_parent_of_neighbors(node)
-                # print('1.')
-                # print('node.coordinate: ',node.coordinate, node.neighbors)
                 path_counter += 1
                 if path_counter == path_length:
-                    self.q.append(self.next_node)
+                    self.reserved_nodes_ls.append(self.next_node)
                 if node.neighbors[0] == 'fin' or node.neighbors[0] == 'deadend':
-                    self.go_to_visited_nodes_to_find_new_path()  # add nodes to self.q
-                    path_counter = 100
+                    self.go_to_visited_nodes_to_find_new_path()  # add nodes to self.reserved_nodes_ls
+                    path_counter = float('inf')
                     continue
             else:
                 path_counter = 0
-                if len(self.q) == 0 and len(self.unvisited_nodes_ls) != 0:
-                    self.go_to_visited_nodes_to_find_new_path()  # add nodes to self.q
+                if len(self.reserved_nodes_ls) == 0 and len(self.unvisited_nodes_ls) != 0:
+                    self.go_to_visited_nodes_to_find_new_path()  # add nodes to self.reserved_nodes_ls
 
-                node = random.sample(self.q, 1)[0]
-                self.q.remove(node)
+                node = random.sample(self.reserved_nodes_ls, 1)[0]
+                self.reserved_nodes_ls.remove(node)
 
                 # choose random number of unvisited neighbors
                 self.choose_random_number_of_neighbors(node)
                 self.set_node_as_parent_of_neighbors(node)
-                # print('2.')
-                # print('node.coordinate: ',node.coordinate, node.neighbors)
                 path_counter += 1
 
-            if len(self.q) == 0 and len(self.unvisited_nodes_ls) == 0:
+            if len(self.reserved_nodes_ls) == 0 and len(self.unvisited_nodes_ls) == 0:
                 break
 
     def draw_maze(self, background_c_val, wall_c_val, start_c_val, end_c_val):
+        """
+        Draws maze on drawing board based on directions of grid graph
+        :param background_c_val: color value of background
+        :param wall_c_val: color value of maze wall
+        :param start_c_val: color value of start node's marking
+        :param end_c_val: color value of end node's marking
+        """
         self.wall_color_val = wall_c_val
         self.background_color_val = background_c_val
         self.start_color_val = start_c_val
@@ -622,9 +665,7 @@ class GridGraphMaze:
                 elif (one_dir == 6 and parent_dir == 8) or (one_dir == 8 and parent_dir == 6):
                     self.draw_pattern10(x, y)
                 else:
-                    print("여기서 에러 났음1: ", node.coordinate)
-                    print("neighbors: ", node.neighbors)
-                    print("parent_dir: ", parent_dir)
+                    print("while drawing error occurred @ node coordinate: ", node.coordinate)
             # 3 ways cell/node
             elif len(directions) == 2:
                 if (({2, 4}.issubset(directions) and parent_dir == 6) or
@@ -644,9 +685,7 @@ class GridGraphMaze:
                       ({6, 8}.issubset(directions) and parent_dir == 2)):
                     self.draw_pattern14(x, y)
                 else:
-                    print("여기서 에러 났음2: ", node.coordinate)
-                    print("neighbors: ", node.neighbors)
-                    print("parent_dir: ", parent_dir)
+                    print("while drawing error occurred @ node coordinate: ", node.coordinate)
             # 4 ways cell/node
             elif (({4, 6, 8}.issubset(directions) and parent_dir == 2) or
                   ({2, 6, 8}.issubset(directions) and parent_dir == 4) or
@@ -655,9 +694,7 @@ class GridGraphMaze:
                 self.draw_pattern15(x, y)
             # Shouldn't be any other types of cells/nodes
             else:
-                print("여기서 에러 났음3: ", node.coordinate)
-                print("neighbors: ", node.neighbors)
-                print("parent_dir: ", parent_dir)
+                print("while drawing error occurred @ node coordinate: ", node.coordinate)
 
         # mode='constant' parameter indicates that we want to pad with constant values.
         self.drawing_board = np.pad(self.drawing_board, ((1, 1), (1, 1)), mode='constant',
@@ -665,6 +702,11 @@ class GridGraphMaze:
         self.rid_of_padding_at_start_node()
 
     def color_start(self, x_start, y_start):
+        """
+        Colors start node with start_color_value
+        :param x_start: x coordinate of grid graph
+        :param y_start: y coordinate of grid graph
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -676,6 +718,11 @@ class GridGraphMaze:
                 self.drawing_board[x][y] = self.start_color_val
 
     def color_end(self, x_start, y_start):
+        """
+        Colors end node with start_color_value
+        :param x_start: x coordinate of grid graph
+        :param y_start: y coordinate of grid graph
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -686,37 +733,38 @@ class GridGraphMaze:
 
     def decide_entrance_direction_of_maze_from_start_node(self, start_node, x_start, y_start):
         """
-        entrance direction here refers to parent direction of start node
+        Entrance direction saved as parent direction of start node.
+        :param start_node: start node in grid graph
+        :param x_start: x coordinate of grid graph
+        :param y_start: y coordinate of grid graph
         """
         if x_start == 0 and y_start == 0:
-            # top_left=True
             start_node.parent_direction = [4, 8]
         elif x_start == 0 and y_start == self.length - 1:
-            # top_right=True
             start_node.parent_direction = [6, 8]
         elif x_start == self.length - 1 and y_start == 0:
-            # bottom_left=True
             start_node.parent_direction = [2, 4]
         elif x_start == self.length - 1 and y_start == self.length - 1:
-            # bottom_right=True
             start_node.parent_direction = [2, 6]
         elif x_start == 0:
-            # top=True
             start_node.parent_direction = [8]
         elif x_start == self.length - 1:
-            # bottom=True
             start_node.parent_direction = [2]
         elif y_start == 0:
-            # left=True
             start_node.parent_direction = [4]
         elif y_start == self.length - 1:
-            # right=True
             start_node.parent_direction = [6]
 
         # pick one entrance direction (from node perspective)
         start_node.parent_direction = random.sample(start_node.parent_direction, 1)[0]
 
     def draw_pattern1(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @    @
+            @    @
+            @@@@@@
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -729,6 +777,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern2(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @@@@@@
+                 @
+            @@@@@@
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -741,6 +795,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern3(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @@@@@@
+            @
+            @@@@@@
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -753,6 +813,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern4(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @@@@@@
+            @    @
+            @    @
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -765,6 +831,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern5(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @    @
+            @    @
+            @    @
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -777,6 +849,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern6(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @@@@@@
+
+            @@@@@@
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -789,6 +867,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern7(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @@@@@@
+            @
+            @    @
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -803,6 +887,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern8(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @@@@@@
+                 @
+            @    @
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -817,6 +907,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern9(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @    @
+                 @
+            @@@@@@
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -831,6 +927,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern10(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @    @
+            @
+            @@@@@@
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -845,6 +947,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern11(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @@@@@@
+
+            @    @
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -859,6 +967,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern12(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @    @
+                 @
+            @    @
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -873,6 +987,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern13(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @    @
+
+            @@@@@@
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -887,6 +1007,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern14(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @    @
+            @
+            @    @
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -901,6 +1027,12 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def draw_pattern15(self, x_start, y_start):
+        """
+        Draws below pattern in 8 by 8 grid:
+            @    @
+
+            @    @
+        """
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -917,6 +1049,10 @@ class GridGraphMaze:
                     self.drawing_board[x][y] = self.wall_color_val
 
     def rid_of_padding_at_start_node(self):
+        """
+        To mark start position in drawing_board,
+        wall of start node's parent is deleted.
+        """
         x_start, y_start = self.start_coord
         start_node = self.grid[x_start][y_start]
         parent_dir = start_node.parent_direction
@@ -950,10 +1086,12 @@ class GridGraphMaze:
 
 if __name__ == "__main__":
     # random.seed(8)
-    grid_length = 30
+    grid_length = 40
+    if grid_length < 2:
+        print("Error: Choose maze size bigger than 2!")
+        exit()
     grid_graph = GridGraphMaze(length=grid_length)
 
-    # check direction/number of neighbors
     print('start:', grid_graph.start_coord)
     print('end:', grid_graph.end_coord)
     print()
@@ -961,17 +1099,21 @@ if __name__ == "__main__":
     st_i, st_j = grid_graph.start_coord
     st_node = grid_graph.grid[st_i][st_j]
 
-    grid_graph.make_maze(st_node, path_length=50)
+    path_length = 50
+    if path_length < 3:
+        print("Error: Choose longer path length!")
+        exit()
+    grid_graph.make_maze(st_node, path_length=path_length)
 
     # 100 by 100 grid => 0.5 second
     # 300 by 300 grid => 44 seconds
 
-    print('=============== neighbors ===============')
-    for i in grid_graph.grid:
-        for j in i:
-            print(''.join([str(x[0]) for x in j.neighbors]), end='\t')
-        print()
-    print()
+    # print('=============== neighbors ===============')
+    # for i in grid_graph.grid:
+    #     for j in i:
+    #         print(''.join([str(x[0]) for x in j.neighbors]), end='\t')
+    #     print()
+    # print()
 
     # print('===============parent direction===============')
     # print()
@@ -988,17 +1130,17 @@ if __name__ == "__main__":
     #         print(j.is_visited, end=' ')
     #     print()
     # print()
-    print('=========================================')
+    # print('=========================================')
 
     grid_graph.draw_maze(background_c_val=0, wall_c_val=1, start_c_val=1, end_c_val=1)
     # Create a sample 2D array of values
     data = grid_graph.drawing_board
 
     # Create a heatmap plot
-    plt.imshow(data, cmap='summer', vmin=0, vmax=1)
+    plt.imshow(data, cmap='cividis', vmin=0, vmax=1)
     # Blues, Purples, Greens, cividis, summer
     # plt.colorbar()  # Add a color bar to the plot
     plt.axis('off')
     # Display the plot
+    plt.savefig('gift_maze.png')
     plt.show()
-    # plt.savefig('summer_maze.png')
