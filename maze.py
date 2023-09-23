@@ -238,16 +238,18 @@ class GridGraphMaze:
         """
         # if encounter a node that has only been added as neighbor, and no neighbor added yet
         # should be fine without the code below. Handled beforehand.
-        if len(node.neighbors) == 0:
-            print('Error: visited node has no neighbor!')
-            return
-
+        # if len(node.neighbors) == 0:
+        #     print('Error: visited node has no neighbor!')
+        #     return
+        if node.coordinate == (2,0):
+            print()
         accessible_directions = self.find_accessible_directions_of_node(node)
 
         if not node.is_start:
             accessible_directions.remove(node.parent_direction)
 
         i, j = node.coordinate
+        random.shuffle(accessible_directions)
         for direction in accessible_directions:
             if direction == 2:
                 if not self.grid[i + 1][j].is_visited:
@@ -357,7 +359,7 @@ class GridGraphMaze:
         else:
             return random.sample([2, 8], 1)[0]
 
-    def choose_direction_with_bias(self, node, p_dir, accessible_directions):
+    def choose_direction_with_bias(self, node, accessible_directions):
         """
         Choose next neighbor node in a biased manner so that
         next decision is the inclined to be the same as parent's direction.
@@ -367,6 +369,7 @@ class GridGraphMaze:
         :param accessible_directions: list of accessible directions ([int]
         :return: direction to neighbor
         """
+        p_dir = node.parent_direction
         if len(accessible_directions) == 2:
             if p_dir == 2 and 8 in accessible_directions:
                 sampled_direction = 8
@@ -417,7 +420,6 @@ class GridGraphMaze:
         #         accessible_directions.append(sampled_direction)
         elif len(accessible_directions) == 3:
             sampled_direction = self.visit_parent_to_get_direction_towards_wall_from_three_possible_dir(node)
-        print('sampled_direction',sampled_direction)
         return sampled_direction
 
     def mark_neighbors_visited_and_choose_next_node(self, node, sampled_direction, reserve_this_node=False, accessible_directions=None):
@@ -517,8 +519,7 @@ class GridGraphMaze:
             if node.is_start:
                 sampled_direction = random.sample(accessible_directions, 1)[0]
             else:
-                sampled_direction = (
-                    self.choose_direction_with_bias(node, p_dir, accessible_directions))
+                sampled_direction = self.choose_direction_with_bias(node, accessible_directions)
 
             # mark neighbors as visited ahead of time (here) to prevent collision
             self.mark_neighbors_visited_and_choose_next_node(node, sampled_direction)
@@ -567,22 +568,21 @@ class GridGraphMaze:
 
                 # if meet deadend/end before meeting expected length
                 if node.neighbors[0] == 'fin' or node.neighbors[0] == 'deadend':
-                    self.go_to_visited_nodes_to_find_new_node()  # add nodes to self.nodes_put_on_hold_ls
+                    self.go_to_visited_nodes_to_find_new_node()  # add one node to self.nodes_put_on_hold_ls
                     path_counter = float('inf')
                     continue
-
                 path_counter += 1
                 # once we reach designated path length, put the next node on hold to be revisited later
                 if path_counter == path_length:
                     self.nodes_put_on_hold_ls.append(self.next_node)
-
             else:
+                if len(self.unvisited_nodes_ls) == 0 and len(self.visited_nodes_ls) == 0:
+                    break
+
                 path_counter = 0
                 node = random.sample(self.nodes_put_on_hold_ls, 1)[0]
                 self.nodes_put_on_hold_ls.remove(node)
 
-                if node.coordinate == (0, 2):
-                    print('문제시작2')
                 # choose random number of unvisited neighbors
                 self.choose_random_number_of_neighbors(node)
                 self.set_node_as_parent_of_neighbors(node)
@@ -1078,8 +1078,8 @@ class GridGraphMaze:
 
 
 if __name__ == "__main__":
-    random.seed(2)
-    grid_length = 3
+    # random.seed(2)
+    grid_length = 10
     if grid_length < 2:
         print("Error: Choose maze size bigger than 2!")
         exit()
@@ -1092,7 +1092,7 @@ if __name__ == "__main__":
     st_i, st_j = grid_graph.start_coord
     st_node = grid_graph.grid[st_i][st_j]
 
-    path_length = 5
+    path_length = 3
     if path_length < 3:
         print("Error: Choose longer path length!")
         exit()
