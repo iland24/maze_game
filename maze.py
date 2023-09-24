@@ -432,7 +432,7 @@ class GridGraphMaze:
                 self.unvisited_nodes_ls.remove(self.grid[i - 1][j])
                 self.next_node = self.grid[i - 1][j]
 
-    def choose_random_number_of_neighbors(self, node):
+    def choose_next_neighbor(self, node):
         """
         1. Marks dead end and end node in node.neighbors.
         2. Finds accessible (unvisited) neighbor nodes
@@ -540,7 +540,7 @@ class GridGraphMaze:
                 # if meet deadend/fin but there's still unvisited nodes in grid,
                 # choose a new node from visited nodes to find node with unchosen accessible neighbor
                 # choose random number of unvisited neighbors
-                self.choose_random_number_of_neighbors(node)
+                self.choose_next_neighbor(node)
                 self.set_node_as_parent_of_neighbors(node)
 
                 # if meet deadend/end before meeting expected length
@@ -563,7 +563,7 @@ class GridGraphMaze:
                 self.nodes_put_on_hold_ls.remove(node)
 
                 # choose random number of unvisited neighbors
-                self.choose_random_number_of_neighbors(node)
+                self.choose_next_neighbor(node)
                 self.set_node_as_parent_of_neighbors(node)
                 path_counter += 1
 
@@ -1054,7 +1054,7 @@ class GridGraphMaze:
 
 if __name__ == "__main__":
     # random.seed(36)
-    grid_length = 30
+    grid_length = 40
     if grid_length < 2:
         print("Error: Choose maze size bigger than 2!")
         exit()
@@ -1067,7 +1067,7 @@ if __name__ == "__main__":
     st_i, st_j = grid_graph.start_coord
     st_node = grid_graph.grid[st_i][st_j]
 
-    length_of_path = 20
+    length_of_path = 5
     if length_of_path < 3:
         print("Error: Choose longer path length!")
         exit()
