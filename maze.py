@@ -498,7 +498,7 @@ class GridGraphMaze:
             # mark neighbors as visited ahead of time (here) to prevent collision
             self.mark_neighbors_visited_and_choose_next_node(node, sampled_direction)
 
-    def go_to_visited_nodes_to_find_new_node(self):
+    def go_to_visited_nodes_to_find_new_node(self, bud_node_cnt):
         # if meet deadend/fin but there's still unvisited nodes in grid,
         # choose a new node from visited nodes to find node with unchosen accessible neighbor
         random.shuffle(self.visited_nodes_ls)
@@ -509,10 +509,10 @@ class GridGraphMaze:
                 self.visited_nodes_ls.remove(visited_node)
             else:
                 self.find_unvisited_nodes_from_visited_and_add_to_q(visited_node)
-                if n > 10: # 이빨 모양 미로 만드는 요소
+                if n > bud_node_cnt:  # new nodes where new path can bud and make branch
                     return
 
-    def make_maze(self, start_node, path_length):
+    def make_maze(self, start_node, path_length, bud_node_cnt):
         """
         Makes maze by searching and adding neighboring node every step starting from start node.
         If deadend/end node is encountered and grid is not fully explored, this function finds
@@ -547,7 +547,7 @@ class GridGraphMaze:
                 if node.neighbors[0] == 'fin' or node.neighbors[0] == 'deadend':
                     # add a few nodes (branching from single node) to self.nodes_put_on_hold_ls
                     if len(self.nodes_put_on_hold_ls) == 0:
-                        self.go_to_visited_nodes_to_find_new_node()
+                        self.go_to_visited_nodes_to_find_new_node(bud_node_cnt)
                     path_counter = float('inf')
                     continue
 
@@ -590,7 +590,7 @@ class GridGraphMaze:
         for x, y in zip(x_grid.flatten(), y_grid.flatten()):
             x = int(x)
             y = int(y)
-
+            print(x,y)
             node = self.grid[x][y]
 
             if node.is_start:
@@ -729,10 +729,11 @@ class GridGraphMaze:
     def draw_pattern1(self, x_start, y_start):
         """
         Draws below pattern in 8 by 8 grid:
-            @    @
-            @    @
             @@@@@@
+            @    @
+            @    @
         """
+        print('draw_pattern_in_game_1')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -751,6 +752,7 @@ class GridGraphMaze:
                  @
             @@@@@@
         """
+        print('draw_pattern_in_game_2')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -769,6 +771,7 @@ class GridGraphMaze:
             @
             @@@@@@
         """
+        print('draw_pattern_in_game_3')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -783,10 +786,11 @@ class GridGraphMaze:
     def draw_pattern4(self, x_start, y_start):
         """
         Draws below pattern in 8 by 8 grid:
+            @    @
+            @    @
             @@@@@@
-            @    @
-            @    @
         """
+        print('draw_pattern_in_game_4')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -805,6 +809,7 @@ class GridGraphMaze:
             @    @
             @    @
         """
+        print('draw_pattern_in_game_5')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -823,6 +828,7 @@ class GridGraphMaze:
 
             @@@@@@
         """
+        print('draw_pattern_in_game_6')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -841,6 +847,7 @@ class GridGraphMaze:
             @
             @    @
         """
+        print('draw_pattern_in_game_7')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -861,6 +868,7 @@ class GridGraphMaze:
                  @
             @    @
         """
+        print('draw_pattern_in_game_8')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -881,6 +889,7 @@ class GridGraphMaze:
                  @
             @@@@@@
         """
+        print('draw_pattern_in_game_9')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -901,6 +910,7 @@ class GridGraphMaze:
             @
             @@@@@@
         """
+        print('draw_pattern_in_game_10')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -921,6 +931,7 @@ class GridGraphMaze:
 
             @    @
         """
+        print('draw_pattern_in_game_11')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -941,6 +952,7 @@ class GridGraphMaze:
                  @
             @    @
         """
+        print('draw_pattern_in_game_12')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -961,6 +973,7 @@ class GridGraphMaze:
 
             @@@@@@
         """
+        print('draw_pattern_in_game_13')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -981,6 +994,7 @@ class GridGraphMaze:
             @
             @    @
         """
+        print('draw_pattern_in_game_14')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -1001,6 +1015,7 @@ class GridGraphMaze:
 
             @    @
         """
+        print('draw_pattern_in_game_15')
         x_end = (x_start + 1) * 8
         y_end = (y_start + 1) * 8
         x_start = x_start * 8
@@ -1053,11 +1068,19 @@ class GridGraphMaze:
 
 
 if __name__ == "__main__":
-    # random.seed(36)
-    grid_length = 40
+    random.seed(0)
+    grid_length = 2
+    length_of_path = 10
+    bud_count = 5
+
     if grid_length < 2:
         print("Error: Choose maze size bigger than 2!")
         exit()
+
+    if length_of_path < 3:
+        print("Error: Choose longer path length!")
+        exit()
+
     grid_graph = GridGraphMaze(length=grid_length)
 
     print('start:', grid_graph.start_coord)
@@ -1067,11 +1090,7 @@ if __name__ == "__main__":
     st_i, st_j = grid_graph.start_coord
     st_node = grid_graph.grid[st_i][st_j]
 
-    length_of_path = 5
-    if length_of_path < 3:
-        print("Error: Choose longer path length!")
-        exit()
-    grid_graph.make_maze(st_node, path_length=length_of_path)
+    grid_graph.make_maze(st_node, path_length=length_of_path, bud_node_cnt=bud_count)
 
     # 100 by 100 grid => 0.5 second
     # 300 by 300 grid => 44 seconds
